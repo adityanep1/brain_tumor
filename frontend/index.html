@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NeuroScan AI - Brain Tumor Segmentation &amp; Classification</title>
+<style>
+:root{
+  --bg:#f3f6fb;--card:#ffffff;--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;
+  --primary:#2563eb;--primary-dark:#1e3a8a;--ok:#16a34a;--warn:#dc2626;--amber:#d97706;
+  --shadow:0 2px 10px rgba(15,23,42,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#0f172a;--card:#1e293b;--text:#e5e7eb;--muted:#94a3b8;--line:#334155;--shadow:0 2px 10px rgba(0,0,0,.4)}
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text)}
+.hero{background:linear-gradient(135deg,#1e3a8a,#2563eb 60%,#0ea5e9);color:#fff;padding:34px 20px 54px}
+.hero .in{max-width:1000px;margin:0 auto}
+.hero h1{margin:0;font-size:28px;letter-spacing:.3px}
+.hero p{margin:8px 0 14px;opacity:.9;font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:4px 12px;font-size:12px}
+main{max-width:1000px;margin:-30px auto 40px;padding:0 16px}
+.card{background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.card h2{margin:0 0 14px;font-size:17px}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:#9ca3af}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--warn)}
+
+/* pipeline */
+.pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.step{flex:1;min-width:130px;border:2px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-size:13px;transition:.25s}
+.step b{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
+.step.active{border-color:var(--primary);background:rgba(37,99,235,.1);transform:translateY(-2px)}
+.step.done{border-color:var(--ok);background:rgba(22,163,74,.1)}
+.arrow{color:var(--muted)}
+
+/* upload */
+.drop{border:2px dashed var(--line);border-radius:12px;padding:26px;text-align:center;cursor:pointer;transition:.2s}
+.drop.over,.drop:hover{border-color:var(--primary);background:rgba(37,99,235,.06)}
+.drop .big{font-size:36px}
+.drop small{color:var(--muted)}
+.fileinfo{display:flex;gap:14px;align-items:center;margin-top:14px}
+.fileinfo img{height:90px;border-radius:8px;background:#000}
+.btn{background:var(--primary);color:#fff;border:0;border-radius:8px;padding:11px 20px;font-size:15px;cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{background:#9ca3af;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--primary);border:1px solid var(--primary);padding:8px 14px;font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.err{color:var(--warn);font-size:14px;margin-top:10px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* result */
+.head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.badge{display:inline-block;padding:7px 16px;border-radius:20px;font-weight:600;color:#fff}
+.badge.ok{background:var(--ok)}.badge.warn{background:var(--warn)}
+.ttype{font-size:26px;font-weight:700;margin:10px 0 2px;text-transform:capitalize}
+.ring{--p:0;width:96px;height:96px;border-radius:50%;background:conic-gradient(var(--primary) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center}
+.ring span{width:74px;height:74px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-weight:700;font-size:18px}
+.ringwrap{text-align:center;font-size:12px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+.stat{background:var(--bg);border-radius:8px;padding:10px 12px}
+.stat small{color:var(--muted);display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.stat b{font-size:18px}
+.alert{background:rgba(217,119,6,.12);border:1px solid var(--amber);color:var(--amber);border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:14px}
+.imgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.imgs figure{margin:0;text-align:center;font-size:13px}
+.imgs img{width:100%;border-radius:8px;background:#000;cursor:zoom-in;display:block}
+.imgs figcaption{margin-top:6px;color:var(--muted)}
+.imgs figcaption a{color:var(--primary);cursor:pointer;margin-left:6px;font-size:12px}
+.prob{margin-top:18px}
+.prob .lab{display:flex;justify-content:space-between;font-size:14px;text-transform:capitalize}
+.bar{background:var(--line);border-radius:5px;height:12px;margin:4px 0 10px;overflow:hidden}
+.bar div{height:100%;border-radius:5px;transition:width .6s}
+
+/* history + about */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--muted);font-size:12px;text-transform:uppercase}
+td img{height:38px;border-radius:4px;background:#000;vertical-align:middle}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.info{background:var(--bg);border-radius:10px;padding:12px;font-size:14px}
+.info b{display:block;margin-bottom:4px}
+.muted{color:var(--muted);font-size:13px}
+.disc{font-size:12px;color:var(--muted);margin-top:14px}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:0 0 30px}
+
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;cursor:zoom-out}
+#modal img{max-width:92vw;max-height:90vh;border-radius:8px}
+
+@media print{
+  .hero,.pipecard,.upcard,.histcard,.aboutcard,.noprint,footer{display:none!important}
+  body{background:#fff;color:#000}.card{box-shadow:none}
+}
+</style>
+</head>
+<body>
+<div class="hero"><div class="in">
+  <h1>NeuroScan AI</h1>
+  <p>Brain tumor segmentation and classification from MRI &mdash;  deep learning project</p>
+  <div class="chips">
+    <span class="chip">U-Net segmentation</span><span class="chip">EfficientNet / ResNet classifier</span>
+    <span class="chip">Grad-CAM explainability</span><span class="chip">FastAPI backend</span>
+  </div>
+</div></div>
+
+<main>
+  <div class="card pipecard">
+    <div class="head"><h2>Pipeline</h2>
+      <span class="status"><span class="dot" id="dot"></span><span id="modelStatus">checking models...</span></span></div>
+    <div class="pipe" id="pipe">
+      <div class="step" data-i="0"><b>1</b>MRI upload</div><span class="arrow">&rarr;</span>
+      <div class="step" data-i="1"><b>2</b>Preprocessing</div><span class="arrow">&rarr;</span>
+      <div class="step" data-i="2"><b>3</b>U-Net mask</div><span class="arrow">&rarr;</span>
+      <div class="step" data-i="3"><b>4</b>Classifier</div><span class="arrow">&rarr;</span>
+      <div class="step" data-i="4"><b>5</b>Grad-CAM + result</div>
+    </div>
+  </div>
+
+  <div class="card upcard">
+    <h2>Upload an MRI slice</h2>
+    <div class="drop" id="drop">
+      <div class="big">&#129504;</div>
+      <div><b>Drag &amp; drop</b> an MRI image here, or click to choose</div>
+      <small>PNG / JPG &middot; grayscale brain MRI slice &middot; max 10 MB</small>
+    </div>
+    <input type="file" id="file" accept="image/*" hidden>
+    <div class="fileinfo" id="fileinfo" style="display:none">
+      <img id="preview" alt="preview"><div><b id="fname"></b><div class="muted" id="fsize"></div></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="go" disabled>Analyze MRI</button>
+      <button class="btn ghost" id="clear" style="display:none">Clear</button>
+    </div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="card" id="result" style="display:none">
+    <div class="head">
+      <div>
+        <span class="badge" id="badge"></span>
+        <div class="ttype" id="ttype"></div>
+        <div class="muted" id="tsub"></div>
+      </div>
+      <div class="ringwrap" id="ringwrap"><div class="ring" id="ring"><span id="ringtxt">0%</span></div>confidence</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><small>Tumor area</small><b id="sArea">-</b></div>
+      <div class="stat"><small>Image</small><b id="sName" style="font-size:14px">-</b></div>
+      <div class="stat"><small>Analysed at</small><b id="sTime" style="font-size:14px">-</b></div>
+    </div>
+    <div class="alert" id="lowconf" style="display:none">Low confidence prediction &mdash; the classifier is not sure. Treat this result with caution.</div>
+    <div class="imgs" id="imgs"></div>
+    <div class="prob" id="probs"></div>
+    <div class="row noprint">
+      <button class="btn ghost" id="print">Download report (PDF)</button>
+    </div>
+    <div class="disc">Educational demo only &mdash; not a medical diagnosis. Always consult a qualified radiologist.</div>
+  </div>
+
+  <div class="card histcard" id="histcard" style="display:none">
+    <h2>History (this session)</h2>
+    <table><thead><tr><th>MRI</th><th>File</th><th>Result</th><th>Confidence</th><th>Time</th></tr></thead><tbody id="hist"></tbody></table>
+  </div>
+
+  <div class="card aboutcard">
+    <h2>How it works</h2>
+    <div class="grid4">
+      <div class="info"><b>Preprocessing</b>Image is converted to grayscale, resized and normalised (z-score) so scans from different machines look alike.</div>
+      <div class="info"><b>U-Net segmentation</b>An encoder-decoder network with skip connections predicts a pixel-wise tumor mask.</div>
+      <div class="info"><b>Classification</b>The tumor region is cropped and a pretrained CNN predicts glioma, meningioma or pituitary.</div>
+      <div class="info"><b>Grad-CAM</b>A heatmap of the classifier&rsquo;s last conv layer shows which areas drove the decision.</div>
+    </div>
+    <p class="muted" style="margin-top:14px"><b>Limitations:</b> trained on a small set of T1 contrast-enhanced slices; works best on similar images; split by image, not by patient; not for clinical use.</p>
+  </div>
+</main>
+<footer>NeuroScan AI &middot; Deep Learning  project</footer>
+<div id="modal"><img id="modalimg" alt="zoom"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const COLORS = ['#2563eb','#16a34a','#d97706','#9333ea','#dc2626'];
+let file = null, history = [], timer = null;
+
+// ---- model status ----
+fetch('/health').then(r => r.json()).then(h => {
+  const ok = h.unet && h.classifier;
+  $('dot').className = 'dot ' + (ok ? 'ok' : 'bad');
+  $('modelStatus').textContent = ok ? 'models ready (' + h.classes.join(', ') + ')'
+    : 'models missing - train them first';
+}).catch(() => { $('dot').className = 'dot bad'; $('modelStatus').textContent = 'server not reachable'; });
+
+// ---- file selection ----
+const drop = $('drop'), input = $('file');
+drop.onclick = () => input.click();
+['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', ev => { if (ev.dataTransfer.files.length) setFile(ev.dataTransfer.files[0]); });
+input.onchange = () => { if (input.files.length) setFile(input.files[0]); };
+
+function setFile(f) {
+  if (!f.type.startsWith('image/')) { $('err').textContent = 'Please choose an image file.'; return; }
+  file = f; $('err').textContent = '';
+  $('preview').src = URL.createObjectURL(f);
+  $('fname').textContent = f.name;
+  $('fsize').textContent = (f.size / 1024).toFixed(1) + ' KB';
+  $('fileinfo').style.display = 'flex';
+  $('go').disabled = false; $('clear').style.display = 'inline-block';
+}
+$('clear').onclick = () => {
+  file = null; input.value = ''; $('fileinfo').style.display = 'none';
+  $('go').disabled = true; $('clear').style.display = 'none'; $('err').textContent = '';
+};
+
+// ---- pipeline animation ----
+function setSteps(active) {
+  document.querySelectorAll('.step').forEach(s => {
+    const i = +s.dataset.i;
+    s.className = 'step' + (i < active ? ' done' : i === active ? ' active' : '');
+  });
+}
+function startAnim() { let i = 0; setSteps(0); timer = setInterval(() => { i = Math.min(i + 1, 4); setSteps(i); }, 700); }
+function stopAnim(ok) { clearInterval(timer); setSteps(ok ? 5 : -1); }
+
+// ---- analyze ----
+$('go').onclick = async () => {
+  if (!file) return;
+  const fd = new FormData(); fd.append('file', file);
+  $('go').disabled = true; $('go').innerHTML = '<span class="spin"></span>Analyzing...';
+  $('err').textContent = ''; startAnim();
+  try {
+    const r = await fetch('/predict', { method: 'POST', body: fd });
+    const txt = await r.text();
+    let d;
+    try { d = JSON.parse(txt); }
+    catch { throw new Error('Server status ' + r.status + ': ' + (txt.slice(0, 200) || 'empty response - check the terminal')); }
+    if (!r.ok) throw new Error(d.detail || 'Request failed');
+    stopAnim(true); show(d);
+  } catch (e) { stopAnim(false); $('err').textContent = 'Error: ' + e.message; }
+  $('go').disabled = false; $('go').textContent = 'Analyze MRI';
+};
+
+function figure(src, caption, fname) {
+  const f = document.createElement('figure');
+  const img = document.createElement('img'); img.src = src; img.alt = caption;
+  img.onclick = () => { $('modalimg').src = src; $('modal').style.display = 'flex'; };
+  const cap = document.createElement('figcaption'); cap.textContent = caption;
+  const a = document.createElement('a'); a.textContent = 'save'; a.href = src; a.download = fname;
+  cap.appendChild(a); f.appendChild(img); f.appendChild(cap);
+  return f;
+}
+
+function show(d) {
+  const now = new Date().toLocaleTimeString();
+  $('result').style.display = 'block';
+  const badge = $('badge');
+  badge.className = 'badge ' + (d.tumor_found ? 'warn' : 'ok');
+  badge.textContent = d.tumor_found ? 'Tumor detected' : 'No tumor detected';
+  $('ttype').textContent = d.tumor_type || (d.tumor_found ? 'Type unavailable' : 'Clear scan');
+  $('tsub').textContent = d.tumor_found ? (d.message || 'Predicted tumor type') : 'Segmentation found no significant tumor region';
+  const pct = d.confidence != null ? Math.round(d.confidence * 100) : 0;
+  $('ringwrap').style.display = d.confidence != null ? 'block' : 'none';
+  $('ring').style.setProperty('--p', pct); $('ringtxt').textContent = pct + '%';
+  $('sArea').textContent = d.tumor_area_percent + '% of image';
+  $('sName').textContent = file ? file.name : '-';
+  $('sTime').textContent = now;
+  $('lowconf').style.display = (d.confidence != null && d.confidence < 0.6) ? 'block' : 'none';
+
+  const box = $('imgs'); box.innerHTML = '';
+  box.appendChild(figure(d.original_png, 'MRI', 'mri.png'));
+  box.appendChild(figure(d.mask_png, 'Tumor mask (U-Net)', 'mask.png'));
+  box.appendChild(figure(d.overlay_png, 'Overlay', 'overlay.png'));
+  if (d.gradcam_png) box.appendChild(figure(d.gradcam_png, 'Grad-CAM (where the classifier looked)', 'gradcam.png'));
+
+  const p = $('probs'); p.innerHTML = '';
+  const entries = Object.entries(d.probabilities || {}).sort((a, b) => b[1] - a[1]);
+  if (entries.length) { const h = document.createElement('h2'); h.textContent = 'Class probabilities'; p.appendChild(h); }
+  entries.forEach(([k, v], i) => {
+    const lab = document.createElement('div'); lab.className = 'lab';
+    const n = document.createElement('span'); n.textContent = k;
+    const val = document.createElement('span'); val.textContent = (v * 100).toFixed(1) + '%';
+    lab.appendChild(n); lab.appendChild(val);
+    const bar = document.createElement('div'); bar.className = 'bar';
+    const fill = document.createElement('div'); fill.style.background = COLORS[i % COLORS.length]; fill.style.width = '0%';
+    bar.appendChild(fill); p.appendChild(lab); p.appendChild(bar);
+    setTimeout(() => { fill.style.width = (v * 100) + '%'; }, 50);
+  });
+
+  history.unshift({ thumb: d.original_png, name: file ? file.name : '-', label: d.tumor_type || (d.tumor_found ? 'unknown' : 'no tumor'),
+                    conf: d.confidence != null ? pct + '%' : '-', time: now });
+  renderHistory();
+  $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderHistory() {
+  $('histcard').style.display = history.length ? 'block' : 'none';
+  const tb = $('hist'); tb.innerHTML = '';
+  history.slice(0, 10).forEach(h => {
+    const tr = document.createElement('tr');
+    const t0 = document.createElement('td'); const im = document.createElement('img'); im.src = h.thumb; t0.appendChild(im);
+    tr.appendChild(t0);
+    [h.name, h.label, h.conf, h.time].forEach(x => { const td = document.createElement('td'); td.textContent = x; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+}
+
+$('print').onclick = () => window.print();
+$('modal').onclick = () => { $('modal').style.display = 'none'; };
+</script>
+</body>
+</html>
+ 
